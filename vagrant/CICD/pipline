@@ -1,0 +1,47 @@
+﻿#!groovy
+pipeline {
+//之前说过jenkins是支持集群的，但是咱们这里不需要集群的方式，因为有了k8s。any在任何可用的agent 上执行
+	agent any
+	//环境变量，
+	environment {
+		REPOSITORY="ssh://git@192.168.66.101:2222/liming/microservice.git"
+		MODULE="user-edge-service"
+		SCRIPT_PATH="/root/"
+	
+	}
+	//流水线是如何提前，都是通过很多个stages下面的stage
+	stages {
+		stage('获取代码'){
+			steps{
+				echo " start fetch code from git ssh://192.168.66.101:2222/liming/microservice.git"
+				deleteDir()
+				git "${REPOSITORY}"
+			}
+		}
+		stage('代码静态检查') {
+			steps{
+				echo " start code check"
+			}
+		}
+		stage('编译+单元测试') {
+			steps{
+				echo " start compile"
+				sh "mvn -U -pl ${MODULE} -am clean package"
+			}
+		}
+		stage('构建镜像') {
+			steps{
+				echo " start build image"
+				sh "#{SCRIPT_PATH}/build-image.sh ${MODULE}"
+			}
+		}
+		
+		stage('发布系统') {
+			steps{
+				echo " start deploy"
+				sh "#{SCRIPT_PATH}/deploy.sh ${MODULE} ${MODULE}"
+			}
+		}
+		
+	}
+}
